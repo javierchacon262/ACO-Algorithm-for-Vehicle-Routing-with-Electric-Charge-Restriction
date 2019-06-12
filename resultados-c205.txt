@@ -1,0 +1,12 @@
+inst: c205, rho = 0.8, ants = 10, iter = 20
+
+Conteo de Depositos:
+ 14 
+
+Instancia: 
+Se demoro: 1897.2575714 segundos en resolver la instancia de problema 
+
+
+distancia total de la mejor solucion encontrada: 1156.5892557797442
+
+

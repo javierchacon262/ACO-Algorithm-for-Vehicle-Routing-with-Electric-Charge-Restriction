@@ -1,0 +1,471 @@
+Clase World:
+"""The nodes and edges of a particular problem.
+
+    Each :class:`World` is created from a list of nodes, a length function, and
+    optionally, a name and a description. Additionally, each :class:`World` has
+    a UID. The length function must accept nodes as its first two parameters,
+    and is responsible for returning the distance between them. It is the 
+    responsibility of the :func:`create_edges` to generate the required
+    :class:`Edge`\s and initialize them with the correct *length* as returned
+    by the length function.
+    
+    Once created, :class:`World` objects convert the actual nodes into node
+    IDs, since solving does not rely on the actual data in the nodes. These are
+    accessible via the :attr:`nodes` property. To access the actual nodes,
+    simply pass an ID obtained from :attr:`nodes` to the :func:`data` method,
+    which will return the node associated with the specified ID.
+    
+    :class:`Edge`\s are accessible in much the same way, except two node IDs
+    must be passed to the :func:`data` method to indicate which nodes start and
+    end the :class:`Edge`. For example:
+    
+    .. code-block:: python
+    
+        ids = world.nodes
+        assert len(ids) > 1
+        node0 = world.data(ids[0])
+        node1 = world.data(ids[1])
+        edge01 = world.data(ids[0], ids[1])
+        assert edge01.start == node0
+        assert edge01.end == node1
+    
+    The :func:`reset_pheromone` method provides an easy way to reset the
+    pheromone levels of every :class:`Edge` contained in a :class:`World` to a
+    given *level*. It should be invoked before attempting to solve a 
+    :class:`World` unless a "blank slate" is not desired. Also note that it
+    should *not* be called between iterations of the :class:`Solver` because it
+    effectively erases the memory of the :class:`Ant` colony solving it.
+        
+    :param list nodes: a list of nodes
+    :param callable lfunc: a function that calculates the distance between
+                           two nodes
+    :param str name: the name of the world (default is "world#", where
+                     "#" is the ``uid`` of the world)
+    :param str description: a description of the world (default is None)
+    """
+    
+    funcion nodes:
+        """Node IDs."""
+    
+    funcion create_edges:
+        """Create edges from the nodes.
+        
+        The job of this method is to map node ID pairs to :class:`Edge`
+        instances that describe the edge between the nodes at the given
+        indices. Note that all of the :class:`Edge`\s are created within this
+        method.
+        
+        :return: a mapping of node ID pairs to :class:`Edge` instances.
+        :rtype: :class:`dict`
+        """
+        
+    funcion reset_pheromone:
+        """Reset the amount of pheromone on every edge to some base *level*.
+        
+        Each time a new set of solutions is to be found, the amount of
+        pheromone on every edge should be equalized to ensure un-biased initial
+        conditions. 
+        
+        :param float level: amount of pheromone to set on each edge 
+                            (default=0.01)
+        """
+    
+    funcion data:
+        """Return the node data of a single id or the edge data of two ids.
+
+        If only *idx* is specified, return the node with the ID *idx*. If *idy*
+        is also specified, return the :class:`Edge` between nodes with indices
+        *idx* and *idy*.
+
+        :param int idx: the id of the first node
+        :param int idy: the id of the second node (default is None)
+        :return: the node with ID *idx* or the :class:`Edge` between nodes
+                  with IDs *idx* and *idy*.
+        :rtype: node or :class:`Edge`
+        """
+        
+Clase Edge:
+
+
+    """This class represents the link between starting and ending nodes.
+
+    In addition to *start* and *end* nodes, every :class:`Edge` has *length*
+    and *pheromone* properties. *length* represents the static, *a priori*
+    information, whereas *pheromone* level represents the dynamic, *a
+    posteriori* information.
+    
+    :param node start: the node at the start of the :class:`Edge`
+    :param node end: the node at the end of the :class:`Edge`
+    :param float length: the length of the :class:`Edge` (default=1)
+    :param float pheromone: the amount of pheromone on the :class:`Edge` 
+                            (default=0.1)
+    """
+    
+    
+    
+Clase Ant:
+
+
+    """
+    A single independent finder of solutions to a :class:`World`.
+
+    Each :class:`Ant` finds a solution to a world one move at a time.  They
+    also represent the solution they find, and are capable of reporting which
+    nodes and edges they visited, in what order they were visited, and the
+    total length of the solution.
+
+    Two properties govern the decisions each :class:`Ant` makes while finding
+    a solution: *alpha* and *beta*. *alpha* controls the importance placed on
+    pheromone while *beta* controls the importance placed on distance. In 
+    general, *beta* should be greater than *alpha* for best results.
+    :class:`Ant`\s also have a *uid* property that can be used to identify a
+    particular instance.
+
+    Using the :func:`initialize` method, each :class:`Ant` *must be 
+    initialized* to a particular :class:`World`, and optionally may be given an
+    initial node from which to start finding a solution. If a starting node is
+    not given, one is chosen at random. Thus a few examples of instantiation
+    and initialization might look like:
+
+    .. code-block:: python
+
+        ant = Ant()
+        ant.initialize(world)
+        
+    .. code-block:: python
+
+        ant = Ant().initialize(world)
+
+    .. code-block:: python
+
+        ant = Ant(alpha=0.5, beta=2.25)
+        ant.initialize(world, start=world.nodes[0])
+
+    .. note::
+
+        The examples above assume the world has already been created!
+
+    Once an :class:`Ant` has found a solution (or at any time), the solution
+    may be obtained and inspected by accessing its ``tour`` property, which
+    returns the nodes visited in order, or its ``path`` property, which 
+    returns the edges visited in order. Also, the total distance of the 
+    solution can be accessed through its ``distance`` property. :class:`Ant`\s
+    are even sortable by their distance:
+    
+    .. code-block:: python
+    
+        ants = [Ant() for ...]
+        # ... have each ant in the list solve a world
+        ants = sorted(ants)
+        for i in range(1, len(ants)):
+            assert ants[i - 1].distance < ants[i].distance
+            
+    :class:`Ant`\s may be cloned, which will return a shallow copy while not 
+    preserving the *uid* property. If this behavior is not desired, simply use
+    the :func:`copy.copy` or :func:`copy.deepcopy` methods as necessary.
+    
+    The remaining methods mainly govern the mechanics of making each move.
+    :func:`can_move` determines whether all possible moves have been made, 
+    :func:`remaining_moves` returns the moves not yet made, :func:`choose_move`
+    returns a single move from a list of moves, :func:`make_move` actually
+    performs the move, and :func:`weigh` returns the weight of a given move.
+    The :func:`move` method governs the move-making process by gathering the
+    remaining moves, choosing one of them, making the chosen move, and 
+    returning the move that was made.
+    """
+    
+    funcion __init__:
+        
+        """Create a new Ant for the given world.
+
+        :param float alpha: the relative importance of pheromone (default=1)
+        :param float beta: the relative importance of distance (default=3)
+        """
+        
+    funcion initialize:
+    
+        """Reset everything so that a new solution can be found.
+
+        :param World world: the world to solve
+        :param Node start: the starting node (default is chosen randomly)
+        :return: `self`
+        :rtype: :class:`Ant`
+        """
+        
+    funcion clone:
+    
+        """Return a shallow copy with a new UID.
+        
+        If an exact copy (including the uid) is desired, use the 
+        :func:`copy.copy` method.
+
+        :return: a clone
+        :rtype: :class:`Ant`
+        """
+        
+    funcion node:
+    
+        """Most recently visited node."""
+        
+    funcion tour:
+    
+        """Nodes visited by the :class:`Ant` in order."""
+        
+    funcion path:
+    
+        """Edges traveled by the :class:`Ant` in order."""
+        
+    funcion __eq__:
+    
+        """Return ``True`` if the distance is equal to the other distance.
+        
+        :param Ant other: right-hand argument
+        :rtype: bool
+        """
+        
+    funcion __lt__:
+    
+        """Return ``True`` if the distance is less than the other distance.
+        
+        :param Ant other: right-hand argument
+        :rtype: bool
+        """
+        
+    funcion can_move:
+    
+        """Return ``True`` if there are moves that have not yet been made.
+    
+        :rtype: bool
+        """
+        # This is only true after we have made the move back to the starting
+        # node.
+        
+    funcion move:
+    
+        """Choose, make, and return a move from the remaining moves.
+        
+        :return: the :class:`Edge` taken to make the move chosen
+        :rtype: :class:`Edge`
+        """
+        
+    funcion remaining_moves:
+    
+        """Return the moves that remain to be made.
+        
+        :rtype: list
+        """
+        
+    funcion choose_move:
+    
+        """Choose a move from all possible moves.
+        
+        :param list choices: a list of all possible moves
+        :return: the chosen element from *choices*
+        :rtype: node
+        """
+        
+    funcion make_move:
+    
+        """Move to the *dest* node and return the edge traveled.
+        
+        When *dest* is ``None``, an attempt to take the final move back to the
+        starting node is made. If that is not possible (because it has 
+        previously been done), then ``None`` is returned.
+        
+        :param node dest: the destination node for the move
+        :return: the edge taken to get to *dest*
+        :rtype: :class:`Edge`
+        """
+        
+    funcion weigh:
+    
+        """Calculate the weight of the given *edge*.
+        
+        The weight of an edge is simply a representation of its perceived value
+        in finding a shorter solution. Larger weights increase the odds of the
+        edge being taken, whereas smaller weights decrease those odds.
+        
+        :param Edge edge: the edge to weigh
+        :return: the weight of *edge*
+        :rtype: float
+        """
+        
+        
+        
+Clase Solver:
+
+    """This class contains the functionality for finding one or more solutions
+    for a given :class:`World`.
+    
+    :param float alpha: relative importance of pheromone (default=1)
+    :param float beta: relative importance of distance (default=3)
+    :param float rho: percent evaporation of pheromone (0..1, default=0.8)
+    :param float q: total pheromone deposited by each :class:`Ant` after
+                    each iteration is complete (>0, default=1)
+    :param float t0: initial pheromone level along each :class:`Edge` of the
+                     :class:`World` (>0, default=0.01)
+    :param int limit: number of iterations to perform (default=100)
+    :param float ant_count: how many :class:`Ant`\s will be used 
+                            (default=10)
+    :param float elite: multiplier of the pheromone deposited by the elite
+                        :class:`Ant` (default=0.5)
+    """
+    
+    funcion cleate_colony:
+    
+        """Create a set of :class:`Ant`\s and initialize them to the given 
+        *world*.
+        
+        If the *ant_count* is less than `1`, :func:`round_robin_ants` are
+        used and the number of :class:`Ant`\s will be equal to the number of
+        nodes. Otherwise, :func:`random_ants` are created instead, and the 
+        number of :class:`Ant`\s will be equal to the *ant_count*.
+        
+        :param World world: the world from which the :class:`Ant`\s will be
+                            given starting nodes.
+        :return: list of :class:`Ant`\s
+        :rtype: list
+        """
+        
+    funcion reset_colony:
+    
+        """Reset the *colony* of :class:`Ant`\s such that each :class:`Ant` is
+        ready to find a new solution.
+        
+        Essentially, this method re-initializes all :class:`Ant`\s in the
+        colony to the :class:`World` that they were initialized to last.
+        Internally, this method is called after each iteration of the
+        :class:`Solver`.
+        
+        :param list colony: the :class:`Ant`\s to reset
+        """
+        
+    funcion aco:
+    
+        """Return the best solution by performing the ACO meta-heuristic.
+        
+        This method lets every :class:`Ant` in the colony find a solution,
+        updates the pheromone levels according to the solutions found, and
+        returns the `Ant` with the best solution.
+        
+        This method is not meant to be called directly. Instead, call either
+        :func:`solve` or :func:`solutions`.
+        
+        :param list colony: the `Ant`\s to use in finding a solution
+        :return: the best solution found
+        :rtype: :class:`Ant`
+        """
+        
+    funcion solve:
+    
+        """Return the single shortest path found through the given *world*.
+
+        :param World world: the :class:`World` to solve
+        :return: the single best solution found
+        :rtype: :class:`Ant`
+        """
+        
+    funcion solutions:
+    
+        """Return successively shorter paths through the given *world*.
+
+        Unlike :func:`solve`, this method returns one solution for each 
+        improvement of the best solution found thus far. 
+
+        :param World world: the :class:`World` to solve
+        :return: successively shorter solutions as :class:`Ant`\s
+        :rtype: list
+        """
+        
+    funcion round_robin_ants:
+    
+        """Returns a list of :class:`Ant`\s distributed to the nodes of the 
+        world in a round-robin fashion.
+
+        Note that this does not ensure at least one :class:`Ant` begins at each
+        node unless there are exactly as many :class:`Ant`\s as there are
+        nodes. However, if *ant_count* is ``0`` then *ant_count* is set to the
+        number of nodes in the :class:`World` and this method is used to create
+        the :class:`Ant`\s before solving.
+
+        :param World world: the :class:`World` in which to create the
+                            :class:`Ant`\s
+        :param int count: the number of :class:`Ant`\s to create
+        :return: the :class:`Ant`\s initialized to nodes in the :class:`World`
+        :rtype: list
+        """
+        
+    funcion random_ants:
+    
+        """Returns a list of :class:`Ant`\s distributed to the nodes of the 
+        world in a random fashion.
+
+        Note that this does not ensure at least one :class:`Ant` begins at each
+        node unless there are exactly as many :class:`Ant`\s as there are
+        nodes. This method is used to create the :class:`Ant`\s before solving
+        if *ant_count* is **not** ``0``.
+
+        :param World world: the :class:`World` in which to create the ants.
+        :param int count: the number of :class:`Ant`\s to create
+        :param bool even: ``True`` if :func:`random.random` should avoid 
+                          choosing the same starting node multiple times
+                          (default is ``False``)
+        :return: the :class:`Ant`\s initialized to nodes in the :class:`World`
+        :rtype: list
+        """
+        
+    funcion find_solutions:
+    
+        """Let each :class:`Ant` find a solution.
+
+        Makes each :class:`Ant` move until each can no longer move.
+
+        .. todo:: 
+        
+            Make the local pheromone update optional and configurable.
+
+        :param list ants: the ants to use for solving
+        """
+        
+    funcion local_update:
+    
+        """Evaporate some of the pheromone on the given *edge*.
+        
+        .. note:: 
+        
+            This method should never let the pheromone on an edge decrease to 
+            less than its initial level.
+
+        :param Edge edge: the :class:`Edge` to be updated
+        """
+        
+    funcion global_update:
+    
+        """Update the amount of pheromone on each edge according to the fitness
+        of solutions that use it.
+
+        This accomplishes the global update performed at the end of each
+        solving iteration. 
+        
+        .. note:: 
+        
+            This method should never let the pheromone on an edge decrease to 
+            less than its initial level.
+
+        :param list ants: the ants to use for solving
+        """
+        
+    funcion trace_elite:
+    
+        """Deposit pheromone along the path of a particular ant.
+
+        This method is used to deposit the pheromone of the elite :class:`Ant`
+        at the end of each iteration.
+        
+        .. note:: 
+        
+            This method should never let the pheromone on an edge decrease to 
+            less than its initial level.
+
+        :param Ant ant: the elite :class:`Ant`
+        """

@@ -1,0 +1,174 @@
+def factibleNode(self, node2):
+    
+        #velocidad del carro
+        v = float(self.world.velocity)
+        recRate = float(self.world.recRate)
+        conRate = float(self.world.conRate)
+        cargaE = float(self.world.cargaE)
+        #Coordenadas
+        if type(self.node()) == list:
+            coord1 = self.node()[0].getCoord()
+        else:
+            coord1 = self.node().getCoord()
+        #print(node2)
+        if type(node2) == list:
+            coord2 = node2[0].getCoord()
+        else:
+            coord2 = node2.getCoord()
+        time = cop.deepcopy(self.time)
+        energia = cop.deepcopy(self.energia)
+        flagGeneral = False
+        flagDep = False
+        flagEst = False
+        flagN3 = False
+        #revisa que el nodo2 seleccionado no este entre los visitados
+        if node2 != None:
+            if type(node2) == list:
+                flagCarga = self.mercaRest(node2[0])
+            else:
+                flagCarga = self.mercaRest(node2)
+        else:
+            flagCarga = False
+            
+        #Primera Decicion: Carga de Mercancia
+        if flagCarga:
+            print("\nEntra aqui en la factibilidad de carga:\n")
+            #FUNCION OBJETIVO:
+            ####################################################################################################
+            dist1 = (self.world.costoVeh) + (self.world.costoDis * euclidean(coord1, coord2))
+            ####################################################################################################   
+            estNodo1 = self.lookCharge(coord1)
+            estNodo2 = self.lookCharge(coord2)
+            energiaR = self.energiaRst(node2)
+            energia = energiaR[5]
+            time += energiaR[6]
+            nodo3 = energiaR[4]
+            nodesCerca = energiaR[7]
+            tiempoR = self.evalTiempo(node2, dist1, nodo3, nodesCerca, time)
+            time += tiempoR[4]
+            print("\nEnergia: ", energiaR[0], " ", energiaR[1], " ", energiaR[2], "\n")
+            print("energia Actual: ", self.energia, " ", dist1*self.world.conRate)
+            print("\nTiempo: ", tiempoR[0], " ", tiempoR[1], " ", tiempoR[2], " ", tiempoR[3], "\n")
+            ####################################################################################################
+            #Segunda Decicion B: Ventanas de Tiempo
+            #Cuando esta dentro de la ventana de tiempo
+            if energiaR[0] and energiaR[1] and not energiaR[2]:
+                #Deciciones sobre ventanas de tiempo
+                #viajar nodo2 y viajar nodo3
+                flagEst = False
+                if tiempoR[0] and tiempoR[1] and not tiempoR[2] and not tiempoR[3]:
+                    flagGeneral = True
+                    flagN3 = True
+                    flagDep = False
+                elif tiempoR[0] and not tiempoR[1] and not tiempoR[2] and not tiempoR[3]:
+                    flagGeneral = True
+                    flagN3 = False
+                    flagDep = False
+                elif not tiempoR[0] and not tiempoR[1] and tiempoR[2] and not tiempoR[3]:
+                    flagGeneral = False
+                    flagN3 = False
+                    flagDep = False
+                elif not tiempoR[0] and not tiempoR[1] and tiempoR[2] and tiempoR[3]:
+                    flagGeneral = False
+                    flagN3 = False
+                    flagDep = True
+                    
+            elif energiaR[0] and not energiaR[1] and not energiaR[2]:
+                #Decisiones sobre ventanas de tiempo
+                #viajar nodo2
+                flagN3 = False
+                flagEst = False
+                if tiempoR[0] and not tiempoR[2] and not tiempoR[3]:
+                    flagGeneral = True
+                    flagDep = False
+                elif not tiempoR[0] and tiempoR[2] and not tiempoR[3]:
+                    flagGeneral = False
+                    flagDep = False
+                elif not tiempoR[0] and tiempoR[2] and tiempoR[3]:
+                    flagGeneral = False
+                    flagDep = True
+                                 
+            elif energiaR[0] and energiaR[1] and energiaR[2]:
+                #Insertar Estacion, viajar nodo2 y viajar nodo3
+                if tiempoR[0] and tiempoR[1] and not tiempoR[2] and not tiempoR[3]:
+                    flagGeneral = True
+                    flagN3 = True
+                    flagEst = True
+                    flagDep = False
+                elif tiempoR[0] and not tiempoR[1] and not tiempoR[2] and not tiempoR[3]:
+                    flagGeneral = True
+                    flagN3 = False
+                    flagEst = True
+                    flagDep = False
+                elif not tiempoR[0] and not tiempoR[1] and tiempoR[2] and not tiempoR[3]:
+                    flagGeneral = False
+                    flagN3 = False
+                    flagEst = True
+                    flagDep = False
+                elif not tiempoR[0] and not tiempoR[1] and tiempoR[2] and tiempoR[3]:
+                    flagGeneral = False
+                    flagN3 = False
+                    flagEst = True
+                    flagDep = True
+            elif energiaR[0] and not energiaR[1] and energiaR[2]:
+                #Insertar estacion y luego viajar al nodo 2
+                flagN3 = False
+                if tiempoR[0] and tiempoR[1] and not tiempoR[2] and not tiempoR[3]:
+                    flagGeneral = True
+                    flagEst = True
+                    flagDep = False
+                elif tiempoR[0] and not tiempoR[1] and not tiempoR[2] and not tiempoR[3]:
+                    flagGeneral = True
+                    flagEst = True
+                    flagDep = False
+                elif not tiempoR[0] and not tiempoR[1] and tiempoR[2] and not tiempoR[3]:
+                    flagGeneral = False
+                    flagEst = False
+                    flagDep = False
+                elif not tiempoR[0] and not tiempoR[1] and tiempoR[2] and tiempoR[3]:
+                    flagGeneral = False
+                    flagEst = False
+                    flagDep = True
+            elif not energiaR[0] and not energiaR[1] and energiaR[2]:
+                #Evaluar con insert_depot la necesidad de cargar para ir al deposito
+                flagGeneral = False
+                flagN3 = False
+                flagEst = True
+                if tiempoR[0] and tiempoR[1] and not tiempoR[2] and not tiempoR[3]:
+                    flagDep = False
+                elif tiempoR[0] and not tiempoR[1] and not tiempoR[2] and not tiempoR[3]:
+                    flagDep = False
+                elif not tiempoR[0] and not tiempoR[1] and tiempoR[2] and not tiempoR[3]:
+                    flagDep = False
+                elif not tiempoR[0] and not tiempoR[1] and tiempoR[2] and tiempoR[3]:
+                    flagDep = True
+            else:
+                flagGeneral = False
+                flagN3 = False
+                flagEst = False
+                flagDep = True
+        #Else de la Primera Decicion
+        else:
+            print("\n Deposito: asxasxas\n")
+            energiaR = self.energiaRst(node2)
+            estNodo1 = self.lookCharge(coord1)
+            nodo3 = energiaR[4]
+            energia = energiaR[5]
+            time += energiaR[6]
+            dist1 = (self.world.costoVeh) + (self.world.costoDis * euclidean(coord1, coord2))
+            nodesCerca = energiaR[7]
+            tiempoR = self.evalTiempo(node2, dist1, nodo3, nodesCerca, time)
+            time += tiempoR[4]
+            flagGeneral = False
+            flagN3 = False
+            flagDep = True
+            if energiaR[2]:
+                flagEst = True
+            else:
+                flagEst = False
+            #print("\nFlagGeneral: ", flagGeneral)
+            #print("\nFlagN3: ", flagN3)
+            #print("\nFlagDep: ", flagDep)
+            #print("\nFlagEst: ", flagEst)
+                
+        return [flagGeneral, flagN3, flagEst, flagDep, time, energia, estNodo1, nodo3]
